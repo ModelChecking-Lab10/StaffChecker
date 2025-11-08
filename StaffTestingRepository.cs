@@ -23,8 +23,8 @@ namespace StaffTesting
             // Arrange
             var expectedList = new List<Staff>
             {
-                new Staff { StaffId = 1, StaffName = "John Doe", Email = "john@example.com", PhoneNumber = "+1234567890", StartingDate = DateTime.Now },
-                new Staff { StaffId = 2, StaffName = "Jane Doe", Email = "jane@example.com", PhoneNumber = "+9876543210", StartingDate = DateTime.Now }
+                new Staff { StaffId = 1, StaffName = "La Tri Tam", Email = "tamla@example.com", PhoneNumber = "+1234567890", StartingDate = DateTime.Now },
+                new Staff { StaffId = 2, StaffName = "Nguyen Minh Nghi", Email = "nghinguyen@example.com", PhoneNumber = "+9876543210", StartingDate = DateTime.Now }
             };
 
             mockRepo.Setup(r => r.GetStaffs()).ReturnsAsync(expectedList);
@@ -42,7 +42,7 @@ namespace StaffTesting
         public async Task GetStaff_WhenFound()
         {
             // Arrange
-            var staff = new Staff { StaffId = 1, StaffName = "John", Email = "john@example.com", PhoneNumber = "0123456789", StartingDate = DateTime.Now };
+            var staff = new Staff { StaffId = 1, StaffName = "La Tri Tam", Email = "tamla@example.com", PhoneNumber = "0123456789", StartingDate = DateTime.Now };
             mockRepo.Setup(r => r.GetStaff(1)).ReturnsAsync(staff);
 
             // Act
@@ -223,8 +223,8 @@ namespace StaffTesting
             var staff = new Staff
             {
                 StaffId = 1,
-                StaffName = "La Tri Tam",
-                Email = "tamla@gmail.com",
+                StaffName = "Nguyen Minh Nghi",
+                Email = "nghinguyen@example.com",
                 PhoneNumber = "0123456789",
                 StartingDate = DateTime.Now
             };
@@ -238,7 +238,7 @@ namespace StaffTesting
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             var deletedStaff = Assert.IsType<Staff>(okResult.Value);
-            Assert.Equal("La Tri Tam", deletedStaff.StaffName);
+            Assert.Equal("Nguyen Minh Nghi", deletedStaff.StaffName);
         }
 
         [Fact]
