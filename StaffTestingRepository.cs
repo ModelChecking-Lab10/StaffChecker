@@ -39,7 +39,7 @@ namespace StaffTesting
         }
 
         [Fact]
-        public async Task GetStaff_ReturnsOk_WhenFound()
+        public async Task GetStaff_WhenFound()
         {
             // Arrange
             var staff = new Staff { StaffId = 1, StaffName = "John", Email = "john@example.com", PhoneNumber = "0123456789", StartingDate = DateTime.Now };
@@ -55,7 +55,7 @@ namespace StaffTesting
         }
 
         [Fact]
-        public async Task GetStaff_ReturnsNotFound_WhenMissing()
+        public async Task GetStaff_WhenMissing()
         {
             // Arrange
             mockRepo.Setup(r => r.GetStaff(99)).ReturnsAsync((Staff)null!);
@@ -72,10 +72,9 @@ namespace StaffTesting
         [InlineData(1, "Alice Nguyen", "alice@example.com", "0123456789")]
         [InlineData(2, "Bob Tran", "bob.tran@company.vn", "+84912345678")]
         [InlineData(3, "Charlie Pham", "charlie.pham@work.co", "0905123456")]
-        [InlineData(4, "Daisy Le", "daisy_le@example.org", "+1-202-555-0147")]
+        [InlineData(4, "Daisy Le", "daisy.le@office.org", "+1-202-555-0188")]
         [InlineData(5, "Ethan Vo", "ethan.vo@domain.io", "0987654321")]
-        public async Task CreateStaff_WhenValid(
-            int id, string name, string email, string phone)
+        public async Task CreateStaff_WhenValid(int id, string name, string email, string phone)
         {
             // Arrange
             var staff = new Staff
@@ -102,24 +101,52 @@ namespace StaffTesting
         }
 
         [Theory]
-        [InlineData("", "invalidemail", "123", "Missing name, invalid email, short phone")]
-        [InlineData("John Doe", "johnexample.com", "0123456789", "Missing @ in email")]
-        [InlineData("Jane Smith", "jane@.com", "0123456789", "Invalid domain in email")]
-        [InlineData("Tom Lee", "tom@example.com", "abc1234567", "Phone contains letters")]
-        [InlineData("Lisa Tran", "lisa@example.com", "", "Missing phone number")]
-        public async Task CreateStaff_WhenInvalid(
-            string name, string email, string phone, string reason)
+        [InlineData(1, "Alice Nguyen", "alice@", "0123456789")]
+        [InlineData(2, "Bob Tran", "bob", "+84912345678")]
+        [InlineData(3, "Charlie Pham", "charlie.pham@@work.co", "0905123456")]
+        [InlineData(4, "Daisy Le", "daisy_le@.org", "0987654321")]
+        [InlineData(5, "Ethan Vo", "ethan.vo@domain..io", "0912345678")]
+        public async Task CreateStaff_WhenInvalidEmail(int id, string name, string email, string phone)
         {
             // Arrange
             var staff = new Staff
             {
+                StaffId = id,
                 StaffName = name,
                 Email = email,
                 PhoneNumber = phone,
                 StartingDate = DateTime.Now
             };
 
-            controller.ModelState.AddModelError("Validation", reason);
+            controller.ModelState.AddModelError("Email", "Invalid email format.");
+
+            // Act
+            var result = await controller.CreateStaff(staff);
+
+            // Assert
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+            Assert.IsType<SerializableError>(badRequest.Value);
+        }
+
+        [Theory]
+        [InlineData(1, "Alice Nguyen", "alice@example.com", "123")]
+        [InlineData(2, "Bob Tran", "bob@company.vn", "abcdefghij")]
+        [InlineData(3, "Charlie Pham", "charlie@work.co", "0905-abc-123")]
+        [InlineData(4, "Daisy Le", "daisy@office.org", "++84912345678")]
+        [InlineData(5, "Ethan Vo", "ethan@domain.io", "01234567890123456789")]
+        public async Task CreateStaff_WhenInvalidPhoneNumber(int id, string name, string email, string phone)
+        {
+            // Arrange
+            var staff = new Staff
+            {
+                StaffId = id,
+                StaffName = name,
+                Email = email,
+                PhoneNumber = phone,
+                StartingDate = DateTime.Now
+            };
+
+            controller.ModelState.AddModelError("PhoneNumber", "Invalid phone number format.");
 
             // Act
             var result = await controller.CreateStaff(staff);
@@ -133,7 +160,7 @@ namespace StaffTesting
         public async Task UpdateStaff_ReturnsOk_WhenUpdated()
         {
             // Arrange
-            var staff = new Staff { StaffId = 1, StaffName = "Old Name", Email = "test@example.com", PhoneNumber = "0123456789", StartingDate = DateTime.Now };
+            var staff = new Staff { StaffId = 1, StaffName = "La Tri Tam", Email = "tamla@gmail.com", PhoneNumber = "0123456789", StartingDate = DateTime.Now };
             mockRepo.Setup(r => r.GetStaff(1)).ReturnsAsync(staff);
             mockRepo.Setup(r => r.UpdateStaff(It.IsAny<Staff>())).ReturnsAsync(staff);
 
