@@ -51,7 +51,7 @@ namespace StaffTesting
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var returnedStaff = Assert.IsType<Staff>(okResult.Value);
-            Assert.Equal("John", returnedStaff.StaffName);
+            Assert.Equal(1, returnedStaff.StaffId);
         }
 
         [Fact]
@@ -173,14 +173,58 @@ namespace StaffTesting
         }
 
         [Fact]
+        public async Task UpdateStaff_ReturnsBadRequest_WhenIdMismatch()
+        {
+            // Arrange
+            var staff = new Staff
+            {
+                StaffId = 2,
+                StaffName = "La Tri Tam",
+                Email = "tamla@gmail.com",
+                PhoneNumber = "0123456789",
+                StartingDate = DateTime.Now
+            };
+
+            // Act
+            var result = await controller.UpdateStaff(1, staff);
+
+            // Assert
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+            Assert.Equal("Staff ID mismatch.", badRequest.Value);
+        }
+
+        [Fact]
+        public async Task UpdateStaff_ReturnsNotFound_WhenStaffDoesNotExist()
+        {
+            // Arrange
+            var staff = new Staff
+            {
+                StaffId = 1,
+                StaffName = "La Tri Tam",
+                Email = "tamla@gmail.com",
+                PhoneNumber = "0123456789",
+                StartingDate = DateTime.Now
+            };
+
+            mockRepo.Setup(r => r.GetStaff(1)).ReturnsAsync((Staff)null!);
+
+            // Act
+            var result = await controller.UpdateStaff(1, staff);
+
+            // Assert
+            var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
+            Assert.Equal("Staff with Id = 1 not found.", notFound.Value);
+        }
+
+        [Fact]
         public async Task DeleteStaff_ReturnsOk_WhenDeleted()
         {
             // Arrange
             var staff = new Staff
             {
                 StaffId = 1,
-                StaffName = "Delete Me",
-                Email = "del@example.com",
+                StaffName = "La Tri Tam",
+                Email = "tamla@gmail.com",
                 PhoneNumber = "0123456789",
                 StartingDate = DateTime.Now
             };
@@ -194,7 +238,36 @@ namespace StaffTesting
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             var deletedStaff = Assert.IsType<Staff>(okResult.Value);
-            Assert.Equal("Delete Me", deletedStaff.StaffName);
+            Assert.Equal("La Tri Tam", deletedStaff.StaffName);
+        }
+
+        [Fact]
+        public async Task DeleteStaff_ReturnsNotFound_WhenStaffDoesNotExist()
+        {
+            // Arrange
+            mockRepo.Setup(r => r.GetStaff(99)).ReturnsAsync((Staff)null!);
+
+            // Act
+            var result = await controller.DeleteStaff(99);
+
+            // Assert
+            var notFound = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Equal("Staff with Id = 99 not found.", notFound.Value);
+        }
+
+        [Fact]
+        public async Task DeleteStaff_ReturnsInternalServerError_WhenExceptionThrown()
+        {
+            // Arrange
+            mockRepo.Setup(r => r.GetStaff(1)).ThrowsAsync(new Exception("Database error"));
+
+            // Act
+            var result = await controller.DeleteStaff(1);
+
+            // Assert
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(500, objectResult.StatusCode);
+            Assert.Equal("Error deleting staff record.", objectResult.Value);
         }
     }
 }
