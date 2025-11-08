@@ -1,228 +1,173 @@
 using Moq;
-using StaffAPI.Data;
-using Xunit;
+using Microsoft.AspNetCore.Mvc;
+using StaffAPI.Controllers;
+using StaffAPI.Models;
+using StaffAPI.Repositories;
 
-namespace StaffTesting;
-public class StaffTestingRepository
+namespace StaffTesting
 {
-    Mock<IEmployeeRepository> mock;
-
-    StaffsContext staffsContext;
-
-    IEmployeeRepository employeeRepository;
-
-    public static List<Employee> expectedList { get; set; }
-
-    public StaffTestingRepository()
+    public class StaffTestingRepository
     {
-        mock = new Mock<IEmployeeRepository>();
+        private readonly Mock<IStaffRepository> mockRepo;
+        private readonly StaffController controller;
 
-        staffsContext = new StaffsContext();
-
-        employeeRepository = new EmployeeRepository(staffsContext);
-
-        expectedList = new List<Employee>();
-
-        expectedList.Add(new Employee() { EmployeeId = 1, FirstName = "John", LastName = "Doe", Email = "john.doe@example.com", DateofBirth = new DateTime(1990, 05, 15), GenderId = 1, DepartmentId = 1 });
-        expectedList.Add(new Employee() { EmployeeId = 2, FirstName = "Jane", LastName = "Smith", Email = "jane.smith@example.com", DateofBirth = new DateTime(1988, 11, 22), GenderId = 2, DepartmentId = 2 });
-        expectedList.Add(new Employee() { EmployeeId = 3, FirstName = "Alice", LastName = "Johnson", Email = "alice.johnson@example.com", DateofBirth = new DateTime(1995, 03, 30), GenderId = 2, DepartmentId = 1 });
-        expectedList.Add(new Employee() { EmployeeId = 4, FirstName = "Bob", LastName = "Williams", Email = "bob.williams@example.com", DateofBirth = new DateTime(1985, 07, 08), GenderId = 1, DepartmentId = 3 });
-    }
-
-    [Fact]
-    public async void GetStaff()
-    {
-        //Expected staff
-        var employee = from emp in expectedList
-                       where emp.EmployeeId == 2
-                       select emp;
-        var expectedEmployee = (employee == null) ? null : employee.FirstOrDefault();
-
-        mock.Setup(x => x.GetEmployee(2)).ReturnsAsync(expectedEmployee);
-
-        var result = await employeeRepository.GetEmployee(2);
-
-        //Assertion 
-        Assert.NotNull(result);
-        Assert.Equal(expectedEmployee.EmployeeId, result.EmployeeId);
-    }
-
-    [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    [InlineData(4)]
-    [InlineData(5)]
-
-    public async void GetStaffById(int id)
-    {
-        var employee = from emp in expectedList
-                       where emp.EmployeeId == id
-                       select emp;
-
-        var expectedEmployee = (employee == null) ? null : employee.FirstOrDefault();
-
-        if (expectedEmployee == null)
+        public StaffTestingRepository()
         {
-            mock.Setup(x => x.GetEmployee(id)).ReturnsAsync(expectedEmployee);
-
-            var result = await employeeRepository.GetEmployee(id);
-
-            Assert.Null(result);
+            mockRepo = new Mock<IStaffRepository>();
+            controller = new StaffController(mockRepo.Object);
         }
-        else
+
+        [Fact]
+        public async Task GetStaffs_ReturnsOk_WithListOfStaffs()
         {
-            mock.Setup(x => x.GetEmployee(id)).ReturnsAsync(expectedEmployee);
+            // Arrange
+            var expectedList = new List<Staff>
+            {
+                new Staff { StaffId = 1, StaffName = "John Doe", Email = "john@example.com", PhoneNumber = "+1234567890", StartingDate = DateTime.Now },
+                new Staff { StaffId = 2, StaffName = "Jane Doe", Email = "jane@example.com", PhoneNumber = "+9876543210", StartingDate = DateTime.Now }
+            };
 
-            var result = await employeeRepository.GetEmployee(id);
+            mockRepo.Setup(r => r.GetStaffs()).ReturnsAsync(expectedList);
 
-            Assert.Equal(expectedEmployee.EmployeeId, result.EmployeeId);
+            // Act
+            var result = await controller.GetStaffs();
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var actualList = Assert.IsAssignableFrom<IEnumerable<Staff>>(okResult.Value);
+            Assert.Equal(2, ((List<Staff>)actualList).Count);
+        }
+
+        [Fact]
+        public async Task GetStaff_ReturnsOk_WhenFound()
+        {
+            // Arrange
+            var staff = new Staff { StaffId = 1, StaffName = "John", Email = "john@example.com", PhoneNumber = "0123456789", StartingDate = DateTime.Now };
+            mockRepo.Setup(r => r.GetStaff(1)).ReturnsAsync(staff);
+
+            // Act
+            var result = await controller.GetStaff(1);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var returnedStaff = Assert.IsType<Staff>(okResult.Value);
+            Assert.Equal("John", returnedStaff.StaffName);
+        }
+
+        [Fact]
+        public async Task GetStaff_ReturnsNotFound_WhenMissing()
+        {
+            // Arrange
+            mockRepo.Setup(r => r.GetStaff(99)).ReturnsAsync((Staff)null!);
+
+            // Act
+            var result = await controller.GetStaff(99);
+
+            // Assert
+            var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
+            Assert.Contains("not found", notFound.Value!.ToString());
+        }
+
+        [Theory]
+        [InlineData(1, "Alice Nguyen", "alice@example.com", "0123456789")]
+        [InlineData(2, "Bob Tran", "bob.tran@company.vn", "+84912345678")]
+        [InlineData(3, "Charlie Pham", "charlie.pham@work.co", "0905123456")]
+        [InlineData(4, "Daisy Le", "daisy_le@example.org", "+1-202-555-0147")]
+        [InlineData(5, "Ethan Vo", "ethan.vo@domain.io", "0987654321")]
+        public async Task CreateStaff_WhenValid(
+            int id, string name, string email, string phone)
+        {
+            // Arrange
+            var staff = new Staff
+            {
+                StaffId = id,
+                StaffName = name,
+                Email = email,
+                PhoneNumber = phone,
+                StartingDate = DateTime.Now
+            };
+
+            mockRepo.Setup(r => r.AddStaff(It.IsAny<Staff>())).ReturnsAsync(staff);
+
+            // Act
+            var result = await controller.CreateStaff(staff);
+
+            // Assert
+            var created = Assert.IsType<CreatedAtActionResult>(result.Result);
+            var createdStaff = Assert.IsType<Staff>(created.Value);
+
+            Assert.Equal(name, createdStaff.StaffName);
+            Assert.Equal(email, createdStaff.Email);
+            Assert.Equal(phone, createdStaff.PhoneNumber);
+        }
+
+        [Theory]
+        [InlineData("", "invalidemail", "123", "Missing name, invalid email, short phone")]
+        [InlineData("John Doe", "johnexample.com", "0123456789", "Missing @ in email")]
+        [InlineData("Jane Smith", "jane@.com", "0123456789", "Invalid domain in email")]
+        [InlineData("Tom Lee", "tom@example.com", "abc1234567", "Phone contains letters")]
+        [InlineData("Lisa Tran", "lisa@example.com", "", "Missing phone number")]
+        public async Task CreateStaff_WhenInvalid(
+            string name, string email, string phone, string reason)
+        {
+            // Arrange
+            var staff = new Staff
+            {
+                StaffName = name,
+                Email = email,
+                PhoneNumber = phone,
+                StartingDate = DateTime.Now
+            };
+
+            controller.ModelState.AddModelError("Validation", reason);
+
+            // Act
+            var result = await controller.CreateStaff(staff);
+
+            // Assert
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+            Assert.IsType<SerializableError>(badRequest.Value);
+        }
+
+        [Fact]
+        public async Task UpdateStaff_ReturnsOk_WhenUpdated()
+        {
+            // Arrange
+            var staff = new Staff { StaffId = 1, StaffName = "Old Name", Email = "test@example.com", PhoneNumber = "0123456789", StartingDate = DateTime.Now };
+            mockRepo.Setup(r => r.GetStaff(1)).ReturnsAsync(staff);
+            mockRepo.Setup(r => r.UpdateStaff(It.IsAny<Staff>())).ReturnsAsync(staff);
+
+            // Act
+            var result = await controller.UpdateStaff(1, staff);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            Assert.IsType<Staff>(okResult.Value);
+        }
+
+        [Fact]
+        public async Task DeleteStaff_ReturnsOk_WhenDeleted()
+        {
+            // Arrange
+            var staff = new Staff
+            {
+                StaffId = 1,
+                StaffName = "Delete Me",
+                Email = "del@example.com",
+                PhoneNumber = "0123456789",
+                StartingDate = DateTime.Now
+            };
+
+            mockRepo.Setup(r => r.GetStaff(1)).ReturnsAsync(staff);
+            mockRepo.Setup(r => r.DeleteStaff(1)).ReturnsAsync(staff);
+
+            // Act
+            var result = await controller.DeleteStaff(1);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var deletedStaff = Assert.IsType<Staff>(okResult.Value);
+            Assert.Equal("Delete Me", deletedStaff.StaffName);
         }
     }
-
-    [Fact]
-    public async void AddStaff_ValidStaff()
-    {
-        var newStaff = new Employee()
-        {
-            EmployeeId = 5,
-            FirstName = "Michael",
-            LastName = "Scott",
-            Email = "michael.scott@example.com",
-            DateofBirth = new DateTime(1971, 03, 15),
-            GenderId = 1,
-            DepartmentId = 2
-        };
-
-        mock.Setup(x => x.AddEmployee(newStaff)).ReturnsAsync(newStaff);
-
-        var result = await mock.Object.AddEmployee(newStaff);
-
-        Assert.Equal(newStaff.EmployeeId, result.EmployeeId);
-    }
-
-    public async void AddStaff_Invalid()
-    {
-        var invalidStaff = new Employee()
-        {
-            EmployeeId = 0,
-            FirstName = "",
-            LastName = "",
-            Email = "",
-            DateofBirth = new DateTime(1971, 03, 15),
-            GenderId = 0,
-            DepartmentId = 0
-        };
-
-        mock.Setup(x => x.AddEmployee(invalidStaff)).ReturnsAsync((Employee)null);
-        var result = await mock.Object.AddEmployee(invalidStaff);
-        Assert.Null(result);
-    }
-
-    [Fact]
-    public async void AddStaff_ExistingId()
-    {
-        var newStaff = new Employee()
-        {
-            EmployeeId = 1,
-            FirstName = "Duplicate",
-            LastName = "User",
-            Email = "",
-            DateofBirth = new DateTime(1995, 5, 5),
-            DepartmentId = 1,
-            GenderId = 1,
-        };
-        var expectedStaff = newStaff;
-        mock.Setup(x => x.AddEmployee(expectedStaff)).ReturnsAsync((Employee)null);
-        var result = await mock.Object.AddEmployee(expectedStaff);
-        Assert.Null(result);
-    }
-
-    [Fact]
-    public async void GetAllStaffs_WithRecords()
-    {
-
-        mock.Setup(x => x.GetEmployees()).ReturnsAsync(expectedList);
-
-        var result = await employeeRepository.GetEmployees();
-
-        var resultList = result.ToList();
-
-        Assert.Equal(expectedList.Count, result.Count());
-        Assert.Equal(expectedList[0].EmployeeId, resultList[0].EmployeeId);
-        Assert.Equal(expectedList[1].FirstName, resultList[1].FirstName);
-    }
-
-    [Fact]
-    public async void GetAllStaffs_EmptyList()
-    {
-        var expectedStaffs = new List<Employee>();
-
-        mock.Setup(x => x.GetEmployees()).ReturnsAsync(expectedStaffs);
-
-        var result = await employeeRepository.GetEmployees();
-
-        Assert.Empty(result);
-    }
-
-    [Fact]
-    public async void UpdateStaff_ValidStaff()
-    {
-        var existingStaff = expectedList[0];
-        var updatedStaff = new Employee { EmployeeId = 1, FirstName = "Edward", LastName = "Smith", Email = "edward.smith@example.com", DateofBirth = new DateTime(1990, 05, 15), GenderId = 1, DepartmentId = 1 };
-
-        mock.Setup(x => x.GetEmployee(1)).ReturnsAsync(existingStaff);
-        mock.Setup(x => x.UpdateEmployee(updatedStaff)).ReturnsAsync(updatedStaff);
-
-        var result = await mock.Object.UpdateEmployee(updatedStaff);
-
-        Assert.Equal(updatedStaff.FirstName, result.FirstName);
-        Assert.Equal(updatedStaff.LastName, result.LastName);
-    }
-
-
-    [Fact]
-    public async void UpdateStaff_StaffNotFound()
-    {
-        var nonExistingStaff = new Employee { EmployeeId = 999, FirstName = "Mark", LastName = "Taylor", Email = "mark.taylor@example.com", DateofBirth = new DateTime(1992, 06, 25), GenderId = 1, DepartmentId = 2 };
-
-        mock.Setup(x => x.GetEmployee(999)).ReturnsAsync((Employee)null);
-        mock.Setup(x => x.UpdateEmployee(nonExistingStaff)).ReturnsAsync((Employee)null);
-
-        var result = await mock.Object.UpdateEmployee(nonExistingStaff);
-
-        Assert.Null(result);
-    }
-
-    [Fact]
-    public async void DeleteStaff_ValidStaff()
-    {
-        var staffToDelete = expectedList[0];
-
-        mock.Setup(x => x.GetEmployee(staffToDelete.EmployeeId)).ReturnsAsync(staffToDelete);
-        mock.Setup(x => x.DeleteEmployee(staffToDelete.EmployeeId)).ReturnsAsync(staffToDelete);
-
-        var result = await mock.Object.DeleteEmployee(staffToDelete.EmployeeId);
-
-
-        Assert.NotNull(result);
-        Assert.Equal(staffToDelete.EmployeeId, result.EmployeeId);
-        Assert.Equal(staffToDelete.FirstName, result.FirstName);
-        Assert.Equal(staffToDelete.LastName, result.LastName);
-    }
-
-    [Fact]
-    public async void DeleteEmployee_StaffNotFound()
-    {
-        var nonExistingEmployeeId = 999;
-
-        mock.Setup(x => x.GetEmployee(nonExistingEmployeeId)).ReturnsAsync((Employee)null);
-        mock.Setup(x => x.DeleteEmployee(nonExistingEmployeeId)).ReturnsAsync((Employee)null);
-
-        var result = await mock.Object.DeleteEmployee(nonExistingEmployeeId);
-
-        Assert.Null(result);
-    }
-
-
 }
