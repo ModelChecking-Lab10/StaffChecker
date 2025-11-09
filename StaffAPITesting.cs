@@ -6,12 +6,12 @@ using StaffAPI.Repositories;
 
 namespace StaffTesting
 {
-    public class StaffTestingRepository
+    public class StaffAPITesting
     {
         private readonly Mock<IStaffRepository> mockRepo;
         private readonly StaffController controller;
 
-        public StaffTestingRepository()
+        public StaffAPITesting()
         {
             mockRepo = new Mock<IStaffRepository>();
             controller = new StaffController(mockRepo.Object);
