@@ -1,17 +1,14 @@
 using Bunit;
 using Moq;
-using Xunit;
 using Microsoft.Extensions.DependencyInjection;
 using StaffClient.Components.Pages;
 using StaffClient.Models;
 using StaffClient.Services;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-
+    
 public class StaffListTests : TestContext
 {
     [Fact]
-    public void ShouldRenderSpinner_WhenLoading()
+    public void ShouldRenderSpinner_WhenNoStaffsAvailable()
     {
         // Arrange
         var mockService = new Mock<IStaffService>();

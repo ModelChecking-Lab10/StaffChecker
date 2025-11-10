@@ -12,16 +12,21 @@ public class AddStaffValidationTests : TestContext
         Services.AddSingleton<IStaffService>(mockService.Object);
     }
 
-    [Fact]
-    public void ShouldShowValidationMessages_ForInvalidEmailAndPhone()
+    [Theory]
+    [InlineData("Tam La", "tamla@", "12abc34")]
+    [InlineData("Tam La", "tamlaexample.com", "phone123")]
+    [InlineData("Tam La", "tamla@.com", "123-456-7890")]
+    [InlineData("Tam La", "tamla", "(123)4567890")]
+    [InlineData("Tam La", "tamla@com", "123.456.7890")]
+    public void ShouldShowValidationMessages_ForInvalidEmailAndPhone(string name, string email, string phone)
     {
         // Arrange
         var cut = RenderComponent<AddStaff>();
 
         // Act — enter invalid values
-        cut.Find("#staffName").Change("Tam La");
-        cut.Find("#email").Change("tamla@");
-        cut.Find("#phone").Change("12abc34");
+        cut.Find("#staffName").Change(name);
+        cut.Find("#email").Change(email);
+        cut.Find("#phone").Change(phone);
 
         cut.Find("form").Submit();
 
@@ -33,14 +38,17 @@ public class AddStaffValidationTests : TestContext
         });
     }
 
-    [Fact]
-    public void ShouldNotShowValidationMessages_ForValidEmailAndPhone()
+    [Theory]
+    [InlineData("Tam La", "tamla@ctu.edu.vn", "0123456789")]
+    [InlineData("Tam La", "tamla@gmail.com", "+84 987654321")]
+    [InlineData("Tam La", "tamla@example.com", "+123 1234567890")]
+    public void ShouldNotShowValidationMessages_ForValidEmailAndPhone(string name, string email, string phone)
     {
         var cut = RenderComponent<AddStaff>();
 
-        cut.Find("#staffName").Change("Tam La");
-        cut.Find("#email").Change("tamla@example.com");
-        cut.Find("#phone").Change("0123456789");
+        cut.Find("#staffName").Change(name);
+        cut.Find("#email").Change(email);
+        cut.Find("#phone").Change(phone);
 
         cut.Find("form").Submit();
 
