@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using StaffAPI.Controllers;
 using StaffAPI.Models;
 using StaffAPI.Repositories;
+using Org.BouncyCastle.Asn1.Misc;
 
 namespace StaffTesting
 {
@@ -24,7 +25,8 @@ namespace StaffTesting
             var expectedList = new List<Staff>
             {
                 new Staff { StaffId = 1, StaffName = "La Tri Tam", Email = "tamla@example.com", PhoneNumber = "+1234567890", StartingDate = DateTime.Now },
-                new Staff { StaffId = 2, StaffName = "Nguyen Minh Nghi", Email = "nghinguyen@example.com", PhoneNumber = "+9876543210", StartingDate = DateTime.Now }
+                new Staff { StaffId = 2, StaffName = "Nguyen Minh Nghi", Email = "nghinguyen@example.com", PhoneNumber = "+9876543210", StartingDate = DateTime.Now },
+                new Staff { StaffId = 3, StaffName = "Nguyen Thanh Sang", Email = "sangnguyen@example.com", PhoneNumber = "+84 123456789", StartingDate = DateTime.Now }
             };
 
             mockRepo.Setup(r => r.GetStaffs()).ReturnsAsync(expectedList);
@@ -35,33 +37,39 @@ namespace StaffTesting
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var actualList = Assert.IsAssignableFrom<IEnumerable<Staff>>(okResult.Value);
-            Assert.Equal(2, ((List<Staff>)actualList).Count);
+            Assert.Equal(expectedList.Count, ((List<Staff>)actualList).Count);
         }
 
-        [Fact]
-        public async Task GetStaff_WhenFound()
+        [Theory]
+        [InlineData(1, "La Tri Tam", "tamla@example.com", "0123456789")]
+        [InlineData(2, "Nguyen Minh Nghi", "nghinguyen@example.com", "0987654321")]
+        [InlineData(3, "Nguyen Thanh Sang", "sangnguyen@example.com", "0123456789")]
+        public async Task GetStaff_WhenFound(int id, string name, string email, string phone)
         {
             // Arrange
-            var staff = new Staff { StaffId = 1, StaffName = "La Tri Tam", Email = "tamla@example.com", PhoneNumber = "0123456789", StartingDate = DateTime.Now };
-            mockRepo.Setup(r => r.GetStaff(1)).ReturnsAsync(staff);
+            var staff = new Staff { StaffId = id, StaffName = name, Email = email, PhoneNumber = phone, StartingDate = DateTime.Now };
+            mockRepo.Setup(r => r.GetStaff(id)).ReturnsAsync(staff);
 
             // Act
-            var result = await controller.GetStaff(1);
+            var result = await controller.GetStaff(id);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var returnedStaff = Assert.IsType<Staff>(okResult.Value);
-            Assert.Equal(1, returnedStaff.StaffId);
+            Assert.Equal(id, returnedStaff.StaffId);
         }
 
-        [Fact]
-        public async Task GetStaff_WhenMissing()
+        [Theory]
+        [InlineData(99)]
+        [InlineData(-99)]
+        [InlineData(999999999)]
+        public async Task GetStaff_WhenMissing(int id)
         {
             // Arrange
-            mockRepo.Setup(r => r.GetStaff(99)).ReturnsAsync((Staff)null!);
+            mockRepo.Setup(r => r.GetStaff(id)).ReturnsAsync((Staff)null!);
 
             // Act
-            var result = await controller.GetStaff(99);
+            var result = await controller.GetStaff(id);
 
             // Assert
             var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
@@ -69,11 +77,11 @@ namespace StaffTesting
         }
 
         [Theory]
-        [InlineData(1, "Alice Nguyen", "alice@example.com", "0123456789")]
-        [InlineData(2, "Bob Tran", "bob.tran@company.vn", "+84912345678")]
+        [InlineData(1, "Alice Nguyen", "alice@example.com", "+84 123456789")]
+        [InlineData(2, "Bob Tran", "bob.tran@company.vn", "+84 912345678")]
         [InlineData(3, "Charlie Pham", "charlie.pham@work.co", "0905123456")]
         [InlineData(4, "Daisy Le", "daisy.le@office.org", "+1-202-555-0188")]
-        [InlineData(5, "Ethan Vo", "ethan.vo@domain.io", "0987654321")]
+        [InlineData(5, "Ethan Vo", "ethan.vo@domain.io", "+123 987654321")]
         public async Task CreateStaff_WhenValid(int id, string name, string email, string phone)
         {
             // Arrange
@@ -102,10 +110,10 @@ namespace StaffTesting
 
         [Theory]
         [InlineData(1, "Alice Nguyen", "alice@", "0123456789")]
-        [InlineData(2, "Bob Tran", "bob", "+84912345678")]
-        [InlineData(3, "Charlie Pham", "charlie.pham@@work.co", "0905123456")]
-        [InlineData(4, "Daisy Le", "daisy_le@.org", "0987654321")]
-        [InlineData(5, "Ethan Vo", "ethan.vo@domain..io", "0912345678")]
+        [InlineData(2, "Bob Tran", "bob", "0123456789")]
+        [InlineData(3, "Charlie Pham", "charlie.pham@@work.co", "0123456789")]
+        [InlineData(4, "Daisy Le", "daisy_le@.org", "0123456789")]
+        [InlineData(5, "Ethan Vo", "ethan.vo@domain..io", "0123456789")]
         public async Task CreateStaff_WhenInvalidEmail(int id, string name, string email, string phone)
         {
             // Arrange
