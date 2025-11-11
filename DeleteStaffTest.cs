@@ -39,10 +39,6 @@ public class DeleteStaffTest : TestContext
         var mockService = new Mock<IStaffService>();
         var nav = new NavigationManagerStub();
 
-        // Simulate GetStaff returning null for invalid ID
-        mockService.Setup(s => s.GetStaff(99))
-                   .ReturnsAsync((Staff?)null);
-
         // Simulate DeleteStaff throwing (e.g., not found / 404)
         mockService.Setup(s => s.DeleteStaff(99))
                    .ThrowsAsync(new Exception("Staff not found"));

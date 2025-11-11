@@ -1,6 +1,6 @@
 using Bunit;
 using Moq;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection; 
 using StaffClient.Components.Pages;
 using StaffClient.Services;
 
@@ -23,7 +23,7 @@ public class AddStaffValidationTests : TestContext
         // Arrange
         var cut = RenderComponent<AddStaff>();
 
-        // Act — enter invalid values
+        // Act
         cut.Find("#staffName").Change(name);
         cut.Find("#email").Change(email);
         cut.Find("#phone").Change(phone);
@@ -54,5 +54,23 @@ public class AddStaffValidationTests : TestContext
 
         Assert.DoesNotContain("Invalid email format", cut.Markup);
         Assert.DoesNotContain("Invalid phone number format", cut.Markup);
+    }
+
+    [Fact]
+    public void ShouldShowValidationMessages_WhenFieldsAreEmpty()
+    {
+        // Arrange
+        var cut = RenderComponent<AddStaff>();
+
+        // Act
+        cut.Find("form").Submit();
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("name is required", cut.Markup);
+            Assert.Contains("Email is required", cut.Markup);
+            Assert.Contains("Phone number is required", cut.Markup);
+        });
     }
 }
